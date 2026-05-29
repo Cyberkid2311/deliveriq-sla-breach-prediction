@@ -27,6 +27,57 @@ PRODUCT_NUMERIC_COLUMNS = [
     "product_width_cm",
 ]
 
+PRODUCT_DIMENSION_COLUMNS = [
+    "product_length_cm",
+    "product_height_cm",
+    "product_width_cm",
+]
+
+ORDERS_REQUIRED_COLUMNS = [
+    "order_id",
+    "customer_id",
+    "order_status",
+    "order_purchase_timestamp",
+    "order_approved_at",
+    "order_delivered_customer_date",
+    "order_estimated_delivery_date",
+]
+
+CUSTOMERS_REQUIRED_COLUMNS = [
+    "customer_id",
+    "customer_zip_code_prefix",
+    "customer_city",
+    "customer_state",
+]
+
+ORDER_ITEMS_REQUIRED_COLUMNS = [
+    "order_id",
+    "order_item_id",
+    "product_id",
+    "seller_id",
+    "price",
+    "freight_value",
+]
+
+SELLERS_REQUIRED_COLUMNS = [
+    "seller_id",
+    "seller_zip_code_prefix",
+    "seller_city",
+    "seller_state",
+]
+
+PRODUCTS_REQUIRED_COLUMNS = [
+    "product_id",
+    "product_category_name",
+    "product_name_length",
+    "product_description_length",
+    "product_photos_qty",
+    "product_weight_g",
+    "product_length_cm",
+    "product_height_cm",
+    "product_width_cm",
+]
+
 BASE_ORDER_COLUMNS = [
     "order_id",
     "customer_id",
@@ -54,10 +105,12 @@ BASE_ORDER_COLUMNS = [
     "avg_price",
     "total_freight_value",
     "avg_freight_value",
+    "total_product_weight_g",
     "avg_product_weight_g",
     "avg_product_length_cm",
     "avg_product_height_cm",
     "avg_product_width_cm",
+    "total_product_volume_cm3",
     "avg_product_volume_cm3",
 ]
 
@@ -77,6 +130,36 @@ def clean_string_columns(df: pd.DataFrame) -> pd.DataFrame:
     for column in string_columns:
         df[column] = df[column].astype("string").str.strip()
 
+    return df
+
+
+def validate_required_columns(
+    df: pd.DataFrame,
+    required_columns: list[str],
+    source_name: str,
+) -> None:
+    """Raise a clear error if required columns are missing."""
+    missing_columns = [column for column in required_columns if column not in df.columns]
+    if missing_columns:
+        raise ValueError(
+            f"{source_name} is missing required columns:\n"
+            + "\n".join(missing_columns)
+        )
+
+
+def normalize_string_columns(df: pd.DataFrame, columns: list[str], lower: bool = True) -> pd.DataFrame:
+    """Standardize text columns used for lookup and grouping."""
+    df = df.copy()
+    for column in columns:
+        if column in df.columns:
+            df[column] = (
+                df[column]
+                .astype("string")
+                .str.strip()
+                .fillna("")
+            )
+            if lower:
+                df[column] = df[column].str.lower()
     return df
 
 
@@ -127,25 +210,24 @@ def parse_numeric_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
 def clean_orders(orders: pd.DataFrame) -> pd.DataFrame:
     """Clean the main orders table."""
+    validate_required_columns(orders, ORDERS_REQUIRED_COLUMNS, "orders")
     orders = clean_basic_dataframe(orders)
     orders = parse_datetime_columns(orders, ORDER_DATE_COLUMNS)
     orders = orders.drop_duplicates(subset=["order_id"], keep="last")
 
-    if "order_status" in orders.columns:
-        orders["order_status"] = orders["order_status"].str.lower()
+    orders["order_status"] = orders["order_status"].str.lower()
 
     return orders
 
 
 def clean_customers(customers: pd.DataFrame) -> pd.DataFrame:
     """Clean customer location fields."""
+    validate_required_columns(customers, CUSTOMERS_REQUIRED_COLUMNS, "customers")
     customers = clean_basic_dataframe(customers)
     customers = clean_zip_column(customers, "customer_zip_code_prefix")
     customers = customers.drop_duplicates(subset=["customer_id"], keep="last")
 
-    if "customer_city" in customers.columns:
-        customers["customer_city"] = customers["customer_city"].str.lower()
-
+    customers = normalize_string_columns(customers, ["customer_city"], lower=True)
     if "customer_state" in customers.columns:
         customers["customer_state"] = customers["customer_state"].str.upper()
 
@@ -154,6 +236,7 @@ def clean_customers(customers: pd.DataFrame) -> pd.DataFrame:
 
 def clean_order_items(order_items: pd.DataFrame) -> pd.DataFrame:
     """Clean product/order-item detail rows."""
+    validate_required_columns(order_items, ORDER_ITEMS_REQUIRED_COLUMNS, "order_items")
     order_items = clean_basic_dataframe(order_items)
     order_items = parse_datetime_columns(order_items, ["shipping_limit_date"])
     order_items = parse_numeric_columns(order_items, ORDER_ITEM_NUMERIC_COLUMNS)
@@ -165,13 +248,12 @@ def clean_order_items(order_items: pd.DataFrame) -> pd.DataFrame:
 
 def clean_sellers(sellers: pd.DataFrame) -> pd.DataFrame:
     """Clean seller location fields."""
+    validate_required_columns(sellers, SELLERS_REQUIRED_COLUMNS, "sellers")
     sellers = clean_basic_dataframe(sellers)
     sellers = clean_zip_column(sellers, "seller_zip_code_prefix")
     sellers = sellers.drop_duplicates(subset=["seller_id"], keep="last")
 
-    if "seller_city" in sellers.columns:
-        sellers["seller_city"] = sellers["seller_city"].str.lower()
-
+    sellers = normalize_string_columns(sellers, ["seller_city"], lower=True)
     if "seller_state" in sellers.columns:
         sellers["seller_state"] = sellers["seller_state"].str.upper()
 
@@ -180,6 +262,7 @@ def clean_sellers(sellers: pd.DataFrame) -> pd.DataFrame:
 
 def clean_products(products: pd.DataFrame) -> pd.DataFrame:
     """Clean product attributes."""
+    validate_required_columns(products, PRODUCTS_REQUIRED_COLUMNS, "products")
     products = clean_basic_dataframe(products)
     products = products.rename(
         columns={
@@ -190,22 +273,28 @@ def clean_products(products: pd.DataFrame) -> pd.DataFrame:
     products = parse_numeric_columns(products, PRODUCT_NUMERIC_COLUMNS)
     products = products.drop_duplicates(subset=["product_id"], keep="last")
 
-    if "product_category_name" in products.columns:
-        products["product_category_name"] = (
-            products["product_category_name"].str.lower().fillna("unknown")
-        )
-
-    products["product_volume_cm3"] = (
-        products["product_length_cm"]
-        * products["product_height_cm"]
-        * products["product_width_cm"]
+    products["product_category_name"] = (
+        products["product_category_name"].astype("string").str.lower().fillna("unknown")
     )
+
+    products["product_volume_cm3"] = products[PRODUCT_DIMENSION_COLUMNS].prod(axis=1)
 
     return products
 
 
+def validate_olist_table_keys(raw_dataframes: dict[str, pd.DataFrame]) -> None:
+    """Ensure Olist raw tables contain all required keys."""
+    expected_keys = ["orders", "customers", "order_items", "sellers", "products"]
+    missing_keys = [key for key in expected_keys if key not in raw_dataframes]
+    if missing_keys:
+        raise ValueError(
+            "Missing raw Olist tables: \n" + "\n".join(missing_keys)
+        )
+
+
 def clean_olist_tables(raw_dataframes: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Clean the minimum Olist tables required for the base order dataset."""
+    validate_olist_table_keys(raw_dataframes)
     return {
         "orders": clean_orders(raw_dataframes["orders"]),
         "customers": clean_customers(raw_dataframes["customers"]),
@@ -255,10 +344,12 @@ def aggregate_order_items_to_order_level(
             avg_price=("price", "mean"),
             total_freight_value=("freight_value", "sum"),
             avg_freight_value=("freight_value", "mean"),
+            total_product_weight_g=("product_weight_g", "sum"),
             avg_product_weight_g=("product_weight_g", "mean"),
             avg_product_length_cm=("product_length_cm", "mean"),
             avg_product_height_cm=("product_height_cm", "mean"),
             avg_product_width_cm=("product_width_cm", "mean"),
+            total_product_volume_cm3=("product_volume_cm3", "sum"),
             avg_product_volume_cm3=("product_volume_cm3", "mean"),
         )
     )

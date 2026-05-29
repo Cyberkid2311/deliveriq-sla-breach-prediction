@@ -15,4 +15,5 @@ files:
 outputs:
   base_order_dataset: base_order_dataset.csv
   modeling_dataset_v1: modeling_dataset_v1.csv
+  feature_dataset: feature_dataset.csv
   final_dataset: olist_final_consumption_dataset.csv
