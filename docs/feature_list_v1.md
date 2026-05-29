@@ -98,6 +98,19 @@ These fields can be used for analysis and target validation, but they should not
 - Missing product numeric fields are filled with the column median.
 - Missing location and category fields are filled as `unknown`.
 
+**Day 3: Feature validation summary**
+
+- **Modeling dataset checked:** `data/processed/modeling_dataset_v1.csv` (96470 rows, 40 columns).
+- **Dataset grain:** one row per order — `order_id` is unique (0 duplicates).
+- **Target (`sla_breached`) distribution:** 0 = 88644 (91.89%), 1 = 7826 (8.11%).
+- **Newly available order-level fields (present in modeling dataset):** `product_count`, `seller_count`, `product_category_count`, `avg_price`, `avg_freight_value`.
+- **Derived fields created at feature-build time:** `price_per_item`, `freight_per_item`, `seller_customer_same_zip_prefix` (computed during `src/features/build_features.py`).
+- **Columns with missing values (>0):** `order_approved_at` (0.0145%), `order_delivered_carrier_date` (0.0010%), `avg_product_weight_g` / `avg_product_length_cm` / `avg_product_height_cm` / `avg_product_width_cm` / `avg_product_volume_cm3` (~0.0166% each).
+- **Categorical cardinalities:** `customer_state` = 27, `customer_city` = 4085 (top cities: Sao Paulo, Rio de Janeiro, Belo Horizonte).
+- **Leakage columns present in the modeling dataset:** many of the raw identifiers and post-delivery fields (these are removed before creating the final `feature_dataset.csv`).
+
+See `docs/day3_feature_validation_notes.md` for detailed counts, missing-value percentages, and top categorical values.
+
 ## Approval
 
 Feature list v1 is approved for the first modeling dataset.
