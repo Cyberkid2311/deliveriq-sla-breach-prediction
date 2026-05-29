@@ -1,200 +1,147 @@
 # Day 2 ML Validation Notes
 
-## Task 1 - SLA Target Validation
+## Objective
 
-The current `sla_breached` target is created in `src/data/process_data.py` using a full timestamp comparison:
+Day 2 answers this question:
 
-```py
-orders["sla_breached"] = np.where(
-    (
-        orders["order_delivered_customer_date"].notna()
-        & orders["order_estimated_delivery_date"].notna()
-        & (
-            orders["order_delivered_customer_date"]
-            > orders["order_estimated_delivery_date"]
-        )
-    ),
-    1,
-    0,
-)
-```
+Can we create a clean dataset where each row is one order and each order has a correct SLA breach label?
 
-### Target Distribution
+Answer: yes.
 
-Source: `data/gold/olist_final_consumption_dataset.csv`
-
-| SLA Breached | Count | Percentage |
-| --- | ---: | ---: |
-| 0 | 103,935 | 92.26% |
-| 1 | 8,715 | 7.74% |
-
-Current breach rate:
+The completed modeling dataset is:
 
 ```text
-8,715 / 112,650 = 7.74%
+data/processed/modeling_dataset_v1.csv
 ```
 
-### Timestamp vs Date-Only Check
+## Deliverables Check
 
-| Target logic | Breached rows | Breach rate |
-| --- | ---: | ---: |
-| Full timestamp comparison | 8,715 | 7.74% of all rows |
-| Calendar date-only comparison | 7,265 | 6.45% of all rows |
-
-Difference:
-
-```text
-1,450 rows
-```
-
-These 1,450 rows were delivered on the same calendar day as the estimated delivery date, but after midnight. Because `order_estimated_delivery_date` is stored as a date at `00:00:00`, the full timestamp comparison marks them as late.
-
-### Validation Answers
-
-| Question | Answer |
+| Deliverable | Status |
 | --- | --- |
-| What percentage of orders are breached? | Current logic: 7.74%. Date-only logic: 6.45%. |
-| Are there too many late orders? | No. The breach rate is below 10%, but the current timestamp logic inflates the target by 1,450 rows. |
-| Are there too few late orders? | The positive class is small enough to require imbalance-aware evaluation, but not so small that modeling is blocked. |
-| Are same-day dates handled correctly? | No. Same-calendar-day deliveries after midnight are currently marked as breaches. |
-| Are timestamps or only dates being compared? | Timestamps are currently compared. SLA logic should use calendar dates or treat the estimate as end-of-day. |
+| `notebooks/02_data_cleaning_and_eda.ipynb` | Complete |
+| `notebooks/02_create_target_and_modeling_dataset.ipynb` | Complete |
+| `src/features/create_target.py` | Complete |
+| `data/processed/modeling_dataset_v1.csv` | Complete |
+| `reports/eda_summary.md` | Complete |
+| `docs/feature_list_v1.md` | Complete |
+| `docs/day2_ml_validation_notes.md` | Complete |
 
-### Recommended Target Rule
+## Modeling Dataset Review
 
-Use calendar-day SLA semantics: an order is breached only when the delivered date is after the estimated delivery date.
+Source: `data/processed/modeling_dataset_v1.csv`
+
+| Check | Result |
+| --- | ---: |
+| Rows | 96,470 |
+| Columns | 38 |
+| Duplicate `order_id` rows | 0 |
+| Order statuses included | `delivered` only |
+| Missing `order_delivered_customer_date` | 0 |
+| Missing `order_estimated_delivery_date` | 0 |
+
+The dataset is one row per order and is suitable for the first MVP modeling dataset.
+
+## Target Logic Validation
+
+The Day 2 task defines the target as:
 
 ```py
-orders["sla_breached"] = np.where(
-    (
-        orders["order_delivered_customer_date"].notna()
-        & orders["order_estimated_delivery_date"].notna()
-        & (
-            orders["order_delivered_customer_date"].dt.date
-            > orders["order_estimated_delivery_date"].dt.date
-        )
-    ),
-    1,
-    0,
-)
+sla_breached = 1 if order_delivered_customer_date > order_estimated_delivery_date
+sla_breached = 0 otherwise
 ```
 
-Alternative: normalize `order_estimated_delivery_date` to end-of-day before comparing timestamps.
+This target is created in `src/features/create_target.py`.
 
-## Task 2 - Day 2 Leakage Rules
+Validation result:
 
-### Allowed for Modeling
+| Check | Result |
+| --- | ---: |
+| Target values are binary | Yes |
+| Mismatches from requested timestamp rule | 0 |
+| Missing target values | 0 |
 
-These columns are safe because they are known before delivery:
+## Target Distribution
 
-- `order_purchase_timestamp`
-- `order_estimated_delivery_date`
-- `customer_state`
-- `customer_city`
-- `customer_zip_code_prefix`
-- `seller_state`
-- `seller_city`
-- `seller_zip_code_prefix`
-- `product_category_name`
-- `product_weight_g`
-- `product_length_cm`
-- `product_height_cm`
-- `product_width_cm`
-- `freight_value`
-- `price`
+| `sla_breached` | Count | Percentage |
+| --- | ---: | ---: |
+| 0 | 88,644 | 91.89% |
+| 1 | 7,826 | 8.11% |
+
+The positive class is below 10%, so Day 3 modeling should use metrics and methods that handle class imbalance.
+
+Recommended evaluation focus:
+
+- Recall for breached orders
+- Precision-recall AUC
+- F1 score
+- Stratified train/test split
+- Class weights or threshold tuning
+
+## Created Time-Based Columns
+
+The following columns were created successfully:
+
+- `sla_breached`
 - `estimated_delivery_days`
+- `actual_delivery_days`
+- `delivery_delay_days`
 - `purchase_day_of_week`
 - `purchase_hour`
 - `is_weekend_order`
 
-Notes:
+Important leakage decision:
 
-- The current gold dataset uses `purchase_dayofweek`; the modeling dataset should rename it to `purchase_day_of_week` or document the mapping.
-- `freight_value` and `price` are approved model features because they are known before delivery, but they are not present in the current gold consumption dataset reviewed in `reports/eda_summary.md`.
+- `estimated_delivery_days`, `purchase_day_of_week`, `purchase_hour`, and `is_weekend_order` are model-safe.
+- `actual_delivery_days` and `delivery_delay_days` are EDA-only because they depend on the actual delivery date.
 
-### EDA-Only Columns
+## Leakage Review
 
-These columns may be used for analysis and validation, but not as model inputs:
+The following fields must not be used as model inputs:
 
+- `sla_breached`
 - `order_delivered_customer_date`
+- `actual_delivery_days`
+- `delivery_delay_days`
+
+The following fields are also EDA-only for the MVP:
+
+- `order_status`
 - `order_approved_at`
 - `order_delivered_carrier_date`
-- `carrier_handover_days`
-- `actual_delivery_days`
-- `delivery_delay_days`
-- `review_score`
-- `customer_review_comment`
-- `order_status`
 
-### Excluded Leakage Columns
+Reason:
 
-These columns either contain the answer directly or are only known after delivery:
+The MVP predicts delivery SLA risk from information available before final delivery. Any feature that depends on actual delivery timing would leak the answer into the model.
 
-- `order_delivered_customer_date`
-- `actual_delivery_days`
-- `delivery_delay_days`
-- `review_score`
-- `customer_review_comment`
-- `sla_breached`
+## EDA Review
 
-## Task 3 - Class Imbalance Review
+The existing EDA deliverables are present:
 
-Using the current gold target:
+- `notebooks/02_data_cleaning_and_eda.ipynb`
+- `reports/eda_summary.md`
 
-| SLA Breached | Count | Percentage |
-| --- | ---: | ---: |
-| 0 | 103,935 | 92.26% |
-| 1 | 8,715 | 7.74% |
+Key summarized patterns from the EDA:
 
-Using the recommended date-only target:
+- SLA breaches are a minority class.
+- Missing actual delivery dates are associated with non-delivered orders.
+- Regional delivery patterns differ by customer and seller location.
+- Product categories show different delay patterns.
+- Longer-distance deliveries tend to have higher SLA breach risk in the existing EDA summary.
 
-| SLA Breached | Count | Percentage |
-| --- | ---: | ---: |
-| 0 | 105,385 | 93.55% |
-| 1 | 7,265 | 6.45% |
+## Day 2 Success Criteria
 
-Decision:
+| Success Criteria | Status |
+| --- | --- |
+| SLA breach target is created | Complete |
+| Target logic is validated | Complete |
+| Modeling dataset has one row per order | Complete |
+| Only delivered orders are used for MVP | Complete |
+| Leakage columns are clearly excluded | Complete |
+| Basic EDA charts are completed | Complete |
+| Delay patterns are summarized | Complete |
+| Feature list v1 is approved | Complete |
+| Dataset is ready for Day 3 feature engineering | Complete |
 
-| Situation | Applies? | Action |
-| --- | --- | --- |
-| Breach rate is less than 10% | Yes | Use recall, PR-AUC, class weights, stratified splits, and threshold tuning. |
-| Breach rate is 10-30% | No | Not the current situation. |
-| Breach rate is above 40% | No | No evidence of severe target logic failure from the overall rate. |
+## Final Day 2 Decision
 
-The target is imbalanced. The first model should prioritize breached-order recall and PR-AUC rather than accuracy alone.
-
-## Task 4 - First Model Input List
-
-The companion deliverable is `docs/feature_list_v1.md`. It should remain the approved source for:
-
-1. Approved model features
-2. EDA-only columns
-3. Excluded leakage columns
-
-## Task 5 - Day 2 Output Review
-
-### `reports/eda_summary.md`
-
-Feedback:
-
-- Target column: The report correctly shows the current `sla_breached` distribution as 8,715 breached rows and a 7.74% breach rate, but it should mention that this is based on timestamp comparison and may overstate same-day breaches.
-- Dataset grain: The report uses `data/gold/olist_final_consumption_dataset.csv`, which has 112,650 rows and 98,666 unique orders. This is not one row per order.
-- Missing values: Critical target date fields are mostly clean: `order_purchase_timestamp` has 0 missing values, `order_estimated_delivery_date` has 0, and `order_delivered_customer_date` has 2,454 missing values.
-- Leakage: Delivery outcome and review columns should stay out of model features.
-- EDA findings: Regional, purchase-day, category, and distance-delay patterns are meaningful, but seller-state and category findings should be interpreted with sample-size caution.
-
-### `data/processed/modeling_dataset_v1.csv`
-
-Feedback:
-
-- This file is currently missing from the repo and could not be reviewed directly.
-- Until it exists, use `data/gold/base_order_dataset.csv` as the one-row-per-order reference. It has 98,666 rows and 98,666 unique orders.
-- The future modeling dataset should exclude leakage columns from features while retaining `sla_breached` only as the target.
-- The modeling dataset should apply or document the date-only SLA target correction before training.
-
-## Final Day 2 Decisions
-
-- Current `sla_breached` logic is not fully correct for calendar-day SLA semantics because it compares timestamps.
-- The recommended target is date-only delivery date greater than date-only estimated delivery date.
-- The breach rate is below 10%, so the model should use recall, PR-AUC, class weights, stratified splitting, and threshold tuning.
-- Approved model features are limited to fields known before delivery.
-- Delivery outcomes, review information, and the target itself must not be used as model input features.
+Day 2 is complete. The repository now contains a clean one-row-per-order modeling dataset with a validated SLA breach target and documented model-safe features.
