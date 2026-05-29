@@ -31,18 +31,29 @@ These fields are allowed as model inputs because they are known before actual cu
 - `product_category_name`
 - `product_weight_g`
 - `product_weight_kg`
+- `total_product_weight_g`
+- `total_product_weight_kg`
 - `product_length_cm`
 - `product_height_cm`
 - `product_width_cm`
 - `product_volume_cm3`
+- `total_product_volume_cm3`
 - `product_weight_bucket`
+- `product_count`
+- `seller_count`
+- `product_category_count`
 
 ### Commercial And Logistics Features
 
 - `freight_value`
+- `avg_freight_value`
 - `freight_value_bucket`
 - `price`
+- `avg_price`
 - `item_count`
+- `price_per_item`
+- `freight_per_item`
+- `seller_customer_same_zip_prefix`
 
 ## Target Column
 
@@ -82,6 +93,7 @@ These fields can be used for analysis and target validation, but they should not
 - `seller_state` and `seller_city` come from the primary seller fields in the order-level dataset.
 - `product_category_name` comes from the primary product category.
 - Product weight and dimensions use average product attributes at the order level.
+- Total product weight and total product volume are retained to represent shipment-level size.
 - `price` and `freight_value` use order-level totals.
 - Missing product numeric fields are filled with the column median.
 - Missing location and category fields are filled as `unknown`.

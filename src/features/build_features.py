@@ -16,12 +16,16 @@ SOURCE_TO_FEATURE_COLUMNS = {
     "primary_seller_state": "seller_state",
     "primary_product_category_name": "product_category_name",
     "avg_product_weight_g": "product_weight_g",
+    "total_product_weight_g": "total_product_weight_g",
     "avg_product_length_cm": "product_length_cm",
     "avg_product_height_cm": "product_height_cm",
     "avg_product_width_cm": "product_width_cm",
     "avg_product_volume_cm3": "product_volume_cm3",
+    "total_product_volume_cm3": "total_product_volume_cm3",
     "total_freight_value": "freight_value",
+    "avg_freight_value": "avg_freight_value",
     "total_price": "price",
+    "avg_price": "avg_price",
 }
 
 TEXT_FEATURES = [
@@ -36,13 +40,24 @@ NUMERIC_FEATURES = [
     "estimated_delivery_days",
     "product_weight_g",
     "product_weight_kg",
+    "total_product_weight_g",
+    "total_product_weight_kg",
     "product_length_cm",
     "product_height_cm",
     "product_width_cm",
     "product_volume_cm3",
+    "total_product_volume_cm3",
     "freight_value",
+    "avg_freight_value",
     "price",
+    "avg_price",
     "item_count",
+    "product_count",
+    "seller_count",
+    "product_category_count",
+    "price_per_item",
+    "freight_per_item",
+    "seller_customer_same_zip_prefix",
 ]
 
 FINAL_FEATURE_COLUMNS = [
@@ -56,18 +71,29 @@ FINAL_FEATURE_COLUMNS = [
     "seller_city",
     "seller_customer_same_state",
     "seller_customer_same_city",
+    "seller_customer_same_zip_prefix",
     "product_category_name",
     "product_weight_g",
     "product_weight_kg",
+    "total_product_weight_g",
+    "total_product_weight_kg",
     "product_length_cm",
     "product_height_cm",
     "product_width_cm",
     "product_volume_cm3",
+    "total_product_volume_cm3",
     "product_weight_bucket",
     "freight_value",
+    "avg_freight_value",
     "freight_value_bucket",
     "price",
+    "avg_price",
     "item_count",
+    "product_count",
+    "seller_count",
+    "product_category_count",
+    "price_per_item",
+    "freight_per_item",
     "sla_breached",
 ]
 
@@ -167,9 +193,11 @@ def handle_missing_product_fields(df: pd.DataFrame) -> pd.DataFrame:
 
     product_numeric_columns = [
         "product_weight_g",
+        "total_product_weight_g",
         "product_length_cm",
         "product_height_cm",
         "product_width_cm",
+        "total_product_volume_cm3",
     ]
 
     for column in product_numeric_columns:
@@ -183,10 +211,23 @@ def handle_missing_commercial_fields(df: pd.DataFrame) -> pd.DataFrame:
     """Fill missing order-level price, freight, and item-count fields."""
     df = df.copy()
 
-    for column in ["freight_value", "price", "item_count"]:
-        df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0)
+    for column in ["freight_value", "price", "item_count", "avg_price", "avg_freight_value"]:
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
+        else:
+            df[column] = 0.0
 
-    df["item_count"] = df["item_count"].astype("int64")
+    valid_item_count = df["item_count"] > 0
+    df.loc[valid_item_count, "avg_price"] = df.loc[valid_item_count, "avg_price"].fillna(
+        df.loc[valid_item_count, "price"] / df.loc[valid_item_count, "item_count"]
+    )
+    df.loc[valid_item_count, "avg_freight_value"] = df.loc[valid_item_count, "avg_freight_value"].fillna(
+        df.loc[valid_item_count, "freight_value"] / df.loc[valid_item_count, "item_count"]
+    )
+
+    df["avg_price"] = df["avg_price"].fillna(0)
+    df["avg_freight_value"] = df["avg_freight_value"].fillna(0)
+    df["item_count"] = df["item_count"].fillna(0).astype("int64")
 
     return df
 
@@ -210,6 +251,7 @@ def create_product_features(df: pd.DataFrame) -> pd.DataFrame:
         df["product_length_cm"] * df["product_height_cm"] * df["product_width_cm"]
     )
     df["product_weight_kg"] = df["product_weight_g"] / 1000
+    df["total_product_weight_kg"] = df["total_product_weight_g"] / 1000
     df["product_weight_bucket"] = pd.cut(
         df["product_weight_g"],
         bins=[0, 500, 1000, 5000, 10000, float("inf")],
@@ -222,6 +264,28 @@ def create_product_features(df: pd.DataFrame) -> pd.DataFrame:
         ],
         include_lowest=True,
     ).astype("string")
+    return df
+
+
+def create_commercial_intensity_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Create per-item commercial intensity features."""
+    df = df.copy()
+    df["price_per_item"] = df["price"] / df["item_count"]
+    df["freight_per_item"] = df["freight_value"] / df["item_count"]
+
+    df.loc[df["item_count"] == 0, "price_per_item"] = 0
+    df.loc[df["item_count"] == 0, "freight_per_item"] = 0
+
+    return df
+
+
+def create_zip_prefix_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Create a simple proximity signal from seller and customer zip prefixes."""
+    df = df.copy()
+    df["seller_customer_same_zip_prefix"] = (
+        df["primary_seller_zip_code_prefix"].astype("string").str.strip()
+        == df["customer_zip_code_prefix"].astype("string").str.strip()
+    ).astype("int64")
     return df
 
 
@@ -298,6 +362,8 @@ def build_feature_dataset(modeling_dataset: pd.DataFrame) -> pd.DataFrame:
     features = handle_missing_product_fields(features)
     features = handle_missing_commercial_fields(features)
     features = create_location_features(features)
+    features = create_zip_prefix_features(features)
+    features = create_commercial_intensity_features(features)
     features = create_product_features(features)
     features = create_freight_features(features)
     features = remove_leakage_and_select_features(features)
