@@ -1,6 +1,7 @@
 paths:
   raw_dir: data/raw
   silver_dir: data/silver
+  processed_dir: data/processed
   gold_dir: data/gold
 
 files:
@@ -12,4 +13,6 @@ files:
   geolocation: olist_geolocation_dataset.csv
 
 outputs:
+  base_order_dataset: base_order_dataset.csv
+  modeling_dataset_v1: modeling_dataset_v1.csv
   final_dataset: olist_final_consumption_dataset.csv
