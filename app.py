@@ -57,4 +57,3 @@ def run_pipeline(config_path: str = "config.yaml") -> None:
 
 if __name__ == "__main__":
     run_pipeline()
-    
