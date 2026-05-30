@@ -4,20 +4,20 @@
 
 The objective of Day 4 is to prepare for baseline machine learning modeling and establish a framework for evaluating model performance in predicting SLA breaches.
 
-The final goal of the modeling phase is to identify orders that are likely to miss their estimated delivery deadlines before the actual delivery occurs.
+# Understanding the Target Variable
 
-Target Variable:
+The target variable for this project is `sla_breached`.
 
-```text
-sla_breached
+- 0 = SLA Met (On-Time Delivery)
+- 1 = SLA Breached (Late Delivery)
 
-0 = SLA Met
-1 = SLA Breached
-```
+This column represents the outcome that the machine learning model will learn to predict.
 
-Because the target contains two possible classes, this is a binary classification problem.
+During training, the model receives order features such as freight value, product weight, customer location, seller location, and estimated delivery information as inputs.
 
----
+The model then compares those features with the known historical outcome (`sla_breached`) and learns patterns associated with delayed deliveries.
+
+After training, the model can analyze a new order and estimate the likelihood of an SLA breach before delivery occurs.
 
 # Dataset Overview
 
