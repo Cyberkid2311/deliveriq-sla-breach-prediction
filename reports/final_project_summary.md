@@ -48,25 +48,24 @@ Leakage columns such as actual delivery date, delay duration, reviews, and IDs a
 
 ## Modeling Results
 
-The project trained baseline and advanced sklearn models:
+The project trained baseline and advanced models:
 
 - Logistic Regression
 - Decision Tree
 - Random Forest
-- Optimized Logistic Regression
-- Tuned Random Forest
-- HistGradientBoosting
+- LightGBM Classifier
+- XGBoost Classifier
 
-The final selected model is Logistic Regression with a tuned threshold of `0.25`.
+The final selected model is LightGBM Classifier with a tuned threshold of `0.25`.
 
 | Metric | Value |
 | --- | ---: |
-| Recall class 1 | 0.8914 |
-| Precision class 1 | 0.1005 |
-| F1 class 1 | 0.1806 |
-| PR-AUC | 0.1825 |
-| False negatives | 170 |
-| False positives | 12,488 |
+| Recall class 1 | 0.9137 |
+| Precision class 1 | 0.1000 |
+| F1 class 1 | 0.1803 |
+| PR-AUC | 0.2042 |
+| False negatives | 135 |
+| False positives | 12,865 |
 
 The final model favors catching likely SLA breaches, which fits the logistics goal of early risk detection.
 

@@ -63,14 +63,14 @@ No actual delivery date, delay duration, review fields, or IDs are used as input
 
 ## Model Results
 
-The final model is Logistic Regression with a tuned threshold of `0.25`.
+The final model is LightGBM Classifier with a tuned threshold of `0.25`.
 
 Key results:
 
-- Recall class 1: 0.8914
-- Precision class 1: 0.1005
-- False negatives: 170
-- False positives: 12,488
+- Recall class 1: 0.9137
+- Precision class 1: 0.1000
+- False negatives: 135
+- False positives: 12,865
 
 The model catches most true SLA breaches, but it creates a high number of alerts. This is acceptable only if operations prefers broad early warning over missing risky orders.
 
@@ -91,4 +91,4 @@ I built this project as a complete ML workflow, not just a model. I validated th
 
 ## Resume-Ready Description
 
-Built an end-to-end logistics SLA breach prediction system using the Olist e-commerce dataset. Engineered pre-delivery order, route, product, freight, and timing features; trained and compared baseline and advanced sklearn models; selected a recall-focused final model with threshold tuning; generated order-level risk scores and risk buckets; and delivered explainability reports plus a Streamlit dashboard for operations review.
+Built an end-to-end logistics SLA breach prediction system using the Olist e-commerce dataset. Engineered pre-delivery order, route, product, freight, and timing features; trained and compared baseline models plus LightGBM and XGBoost; selected a recall-focused final model with threshold tuning; generated order-level risk scores and risk buckets; and delivered explainability reports plus a Streamlit dashboard for operations review.

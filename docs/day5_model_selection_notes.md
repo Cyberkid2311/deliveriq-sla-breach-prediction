@@ -10,7 +10,7 @@
 
 ## Final Decision
 
-- Selected model: `Logistic Regression`
+- Selected model: `LightGBM Classifier`
 - Final artifact: `models/final_model.pkl`
 - Selected threshold: 0.25
 
@@ -19,10 +19,10 @@ The final model is selected by the project priority order: recall, precision, F1
 ## Baseline Versus Final Model
 
 - Best Day 4 baseline by recall: `Random Forest` with recall 0.6415.
-- Final model threshold recall: 0.8914.
-- Final model threshold precision: 0.1005.
-- Final model false negatives: 170.
-- Final model false positives: 12488.
+- Final model threshold recall: 0.9137.
+- Final model threshold precision: 0.1000.
+- Final model false negatives: 135.
+- Final model false positives: 12865.
 
 ## Threshold Strategy
 

@@ -8,16 +8,16 @@ The final model is explained using model-native feature importance. SHAP analysi
 
 | Rank | Feature | Importance | Business Explanation |
 | ---: | --- | ---: | --- |
-| 1 | `categorical__customer_city_santa cruz de goias` | 3.740506 | Historical pattern learned from approved pre-delivery features |
-| 2 | `categorical__customer_city_arace` | 2.962578 | Historical pattern learned from approved pre-delivery features |
-| 3 | `categorical__seller_city_terra boa` | 2.789364 | Historical pattern learned from approved pre-delivery features |
-| 4 | `categorical__customer_city_capela do alto` | 2.636775 | Historical pattern learned from approved pre-delivery features |
-| 5 | `categorical__customer_city_senges` | 2.570985 | Historical pattern learned from approved pre-delivery features |
-| 6 | `categorical__customer_city_japi` | 2.567078 | Historical pattern learned from approved pre-delivery features |
-| 7 | `categorical__customer_city_sao joao de iracema` | 2.483716 | Historical pattern learned from approved pre-delivery features |
-| 8 | `categorical__customer_city_mercedes` | 2.472610 | Historical pattern learned from approved pre-delivery features |
-| 9 | `categorical__customer_city_vila pereira` | 2.471482 | Historical pattern learned from approved pre-delivery features |
-| 10 | `categorical__customer_city_porteirinha` | 2.445965 | Historical pattern learned from approved pre-delivery features |
+| 1 | `numeric__estimated_delivery_days` | 1099.000000 | Long promised delivery window |
+| 2 | `categorical__customer_city` | 651.000000 | Historical pattern learned from approved pre-delivery features |
+| 3 | `categorical__customer_state` | 606.000000 | Destination region pattern |
+| 4 | `numeric__avg_freight_value` | 531.000000 | Costlier or more complex shipment |
+| 5 | `numeric__product_length_cm` | 433.000000 | Historical pattern learned from approved pre-delivery features |
+| 6 | `categorical__seller_city` | 417.000000 | Historical pattern learned from approved pre-delivery features |
+| 7 | `categorical__seller_customer_city_pair` | 402.000000 | Historical pattern learned from approved pre-delivery features |
+| 8 | `numeric__avg_price` | 397.000000 | Historical pattern learned from approved pre-delivery features |
+| 9 | `categorical__product_category_name` | 377.000000 | Product category delay pattern |
+| 10 | `numeric__price` | 374.000000 | Historical pattern learned from approved pre-delivery features |
 
 ## SHAP Status
 

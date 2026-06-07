@@ -1,43 +1,57 @@
-# Day 5 Model Optimization Report
+# Advanced Model Report
 
-## Dataset
+## Business Summary
 
-- Source: `data\processed\feature_dataset.csv`
-- Training rows: 77,176
-- Test rows: 19,294
-- Target: `sla_breached`
-- Train SLA breach rate: 8.11%
-- Test SLA breach rate: 8.11%
-- Test split: stratified 20% holdout with random_state=42
+The selected final model is `LightGBM Classifier`.
+The selection prioritizes catching SLA breaches, then precision, F1-score, PR-AUC, and ROC-AUC.
+The best default-threshold recall model is `Random Forest`.
+The best default-threshold precision-recall balance by F1 is `XGBoost Classifier`.
 
-## Optimization Approach
+Advanced models were implemented with LightGBM and XGBoost as requested, then compared against the three Day 4 baselines on the same held-out test split.
 
-- Added model-safe delivery estimate, route, and order intensity features.
-- Trained sklearn-only optimized candidates.
-- Evaluated probability thresholds from 0.05 to 0.95.
-- Selected thresholds using recall first after basic precision and false-positive guardrails.
+## Model Comparison
 
-## Default Threshold Model Comparison
+| Model | Accuracy | Precision Class 1 | Recall Class 1 | F1 Class 1 | ROC-AUC | PR-AUC | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Logistic Regression | 0.6823 | 0.1477 | 0.6115 | 0.2379 | 0.7045 | 0.1825 | Baseline |
+| Decision Tree | 0.6532 | 0.1297 | 0.5738 | 0.2116 | 0.6690 | 0.1657 | Baseline |
+| Random Forest | 0.6039 | 0.1242 | 0.6415 | 0.2081 | 0.6664 | 0.1630 | Baseline |
+| LightGBM Classifier | 0.7259 | 0.1619 | 0.5700 | 0.2522 | 0.7145 | 0.2042 | Advanced final model candidate |
+| XGBoost Classifier | 0.7458 | 0.1667 | 0.5335 | 0.2540 | 0.7131 | 0.2064 | Advanced optional comparison model |
 
-| Model | Accuracy | Precision Class 1 | Recall Class 1 | F1 Class 1 | PR-AUC | ROC-AUC |
+## Recall-First Threshold Review
+
+| Model | Threshold | Precision Class 1 | Recall Class 1 | F1 Class 1 | False Positives | False Negatives |
 | --- | --- | --- | --- | --- | --- | --- |
-| Optimized Logistic Regression | 0.7433 | 0.1676 | 0.5457 | 0.2564 | 0.1899 | 0.7084 |
-| Optimized Random Forest | 0.6325 | 0.1339 | 0.6460 | 0.2219 | 0.1640 | 0.6786 |
-| HistGradientBoosting | 0.9189 | 0.6000 | 0.0019 | 0.0038 | 0.2078 | 0.7200 |
+| Logistic Regression | 0.2500 | 0.1005 | 0.8914 | 0.1806 | 12488 | 170 |
+| Decision Tree | 0.3000 | 0.1015 | 0.8428 | 0.1811 | 11679 | 246 |
+| Random Forest | 0.4500 | 0.1012 | 0.8371 | 0.1806 | 11632 | 255 |
+| LightGBM Classifier | 0.2500 | 0.1000 | 0.9137 | 0.1803 | 12865 | 135 |
+| XGBoost Classifier | 0.2500 | 0.1016 | 0.8971 | 0.1826 | 12412 | 161 |
 
-## Selected Recall-First Thresholds
+## Final Model Selection
 
-| Model | Threshold | Precision Class 1 | Recall Class 1 | F1 Class 1 | PR-AUC | ROC-AUC | False Positives | False Negatives | True Positives |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Optimized Logistic Regression | 0.2000 | 0.1020 | 0.8843 | 0.1829 | 0.1899 | 0.7084 | 12188 | 181 | 1384 |
-| Optimized Random Forest | 0.5000 | 0.1339 | 0.6460 | 0.2219 | 0.1640 | 0.6786 | 6537 | 554 | 1011 |
-| HistGradientBoosting | 0.0500 | 0.1088 | 0.8754 | 0.1935 | 0.2078 | 0.7200 | 11224 | 195 | 1370 |
+- Final model: `LightGBM Classifier`
+- Saved artifact: `models/final_model.pkl`
+- Default operating threshold: 0.25
+- Recall class 1: 0.9137
+- Precision class 1: 0.1000
+- F1 class 1: 0.1803
+- PR-AUC: 0.2042
 
-## Recommended Operational Model
+## Risk Bucket Logic
 
-- Model: `Optimized Logistic Regression`
-- Threshold: 0.20
-- Recall class 1: 0.8843
-- Precision class 1: 0.1020
-- False negatives: 181
-- False positives: 12188
+| Probability Range | Risk Bucket | Action |
+| ---: | --- | --- |
+| 0.00-0.30 | Low | No action |
+| >0.30-0.60 | Medium | Monitor |
+| >0.60-0.80 | High | Prioritize |
+| >0.80-1.00 | Critical | Immediate intervention |
+
+## Implemented Model Lineup
+
+- Baseline 1: Logistic Regression
+- Baseline 2: Decision Tree
+- Baseline 3: Random Forest
+- Advanced 1: LightGBM Classifier
+- Advanced 2: XGBoost Classifier

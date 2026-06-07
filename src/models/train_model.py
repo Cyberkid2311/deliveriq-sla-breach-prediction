@@ -5,6 +5,8 @@ import pickle
 from typing import Any
 
 import pandas as pd
+import warnings
+from sklearn.pipeline import Pipeline
 
 try:
     from src.models.evaluate_model import (
@@ -33,8 +35,7 @@ try:
         split_train_test,
     )
     from src.models.train_optimized import (
-        MODEL_DISPLAY_NAMES as ADVANCED_DISPLAY_NAMES,
-        build_model_candidates as build_advanced_candidates,
+        build_dense_ordinal_preprocessor,
         separate_optimized_features_and_target,
     )
 except ModuleNotFoundError:
@@ -67,20 +68,26 @@ except ModuleNotFoundError:
         split_train_test,
     )
     from src.models.train_optimized import (
-        MODEL_DISPLAY_NAMES as ADVANCED_DISPLAY_NAMES,
-        build_model_candidates as build_advanced_candidates,
+        build_dense_ordinal_preprocessor,
         separate_optimized_features_and_target,
     )
 
 
 ADVANCED_REPORT_PATH = PROJECT_ROOT / "reports/advanced_model_report.md"
 MODEL_SELECTION_NOTES_PATH = PROJECT_ROOT / "docs/day5_model_selection_notes.md"
+DAY5_OPTIMIZATION_REPORT_PATH = PROJECT_ROOT / "reports/day5_model_optimization_report.md"
+DAY5_THRESHOLD_REPORT_PATH = PROJECT_ROOT / "reports/day5_threshold_tuning_report.md"
 FINAL_MODEL_PATH = MODEL_DIR / "final_model.pkl"
 
 BASELINE_DISPLAY_NAMES = {
     "logistic_regression": "Logistic Regression",
     "decision_tree": "Decision Tree",
     "random_forest": "Random Forest",
+}
+
+ADVANCED_DISPLAY_NAMES = {
+    "lightgbm": "LightGBM Classifier",
+    "xgboost": "XGBoost Classifier",
 }
 
 DISPLAY_NAMES = {
@@ -92,9 +99,8 @@ MODEL_NOTES = {
     "logistic_regression": "Baseline",
     "decision_tree": "Baseline",
     "random_forest": "Baseline",
-    "optimized_logistic_regression": "Advanced sklearn",
-    "optimized_random_forest": "Advanced tuned Random Forest",
-    "hist_gradient_boosting": "Advanced sklearn gradient boosting",
+    "lightgbm": "Advanced final model candidate",
+    "xgboost": "Advanced optional comparison model",
 }
 
 
@@ -116,6 +122,75 @@ def train_baseline_models(
             ]
         )
         models[model_name].fit(X_train, y_train)
+    return models
+
+
+def calculate_scale_pos_weight(y_train: pd.Series) -> float:
+    """Calculate imbalance weight for gradient boosting classifiers."""
+    positives = int((y_train == 1).sum())
+    negatives = int((y_train == 0).sum())
+    if positives == 0:
+        return 1.0
+    return negatives / positives
+
+
+def train_advanced_models(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+) -> dict[str, Any]:
+    """Train the requested LightGBM and XGBoost advanced candidates."""
+    try:
+        from lightgbm import LGBMClassifier
+        from xgboost import XGBClassifier
+    except ModuleNotFoundError as error:
+        raise ModuleNotFoundError(
+            "LightGBM and XGBoost are required for Day 5 advanced training. "
+            "Install them with `pip install lightgbm xgboost`."
+        ) from error
+
+    scale_pos_weight = calculate_scale_pos_weight(y_train)
+    models = {
+        "lightgbm": Pipeline(
+            steps=[
+                ("preprocessor", build_dense_ordinal_preprocessor(X_train)),
+                (
+                    "model",
+                    LGBMClassifier(
+                        class_weight="balanced",
+                        learning_rate=0.05,
+                        max_depth=8,
+                        n_estimators=300,
+                        num_leaves=31,
+                        objective="binary",
+                        random_state=42,
+                        verbosity=-1,
+                    ),
+                ),
+            ]
+        ),
+        "xgboost": Pipeline(
+            steps=[
+                ("preprocessor", build_dense_ordinal_preprocessor(X_train)),
+                (
+                    "model",
+                    XGBClassifier(
+                        eval_metric="logloss",
+                        learning_rate=0.05,
+                        max_depth=6,
+                        n_estimators=300,
+                        n_jobs=1,
+                        random_state=42,
+                        scale_pos_weight=scale_pos_weight,
+                        subsample=0.9,
+                        colsample_bytree=0.9,
+                    ),
+                ),
+            ]
+        ),
+    }
+
+    for model in models.values():
+        model.fit(X_train, y_train)
     return models
 
 
@@ -197,7 +272,7 @@ def generate_advanced_model_report(
         f"The best default-threshold recall model is `{best_recall_model}`.",
         f"The best default-threshold precision-recall balance by F1 is `{best_balance_model}`.",
         "",
-        "Advanced models did improve the project outcome because the final workflow now includes stronger model candidates and threshold tuning, not just default 0.50 predictions.",
+        "Advanced models were implemented with LightGBM and XGBoost as requested, then compared against the three Day 4 baselines on the same held-out test split.",
         "",
         "## Model Comparison",
         "",
@@ -221,12 +296,60 @@ def generate_advanced_model_report(
         "",
         format_risk_bucket_logic(),
         "",
-        "## Notes On LightGBM And XGBoost",
+        "## Implemented Model Lineup",
         "",
-        "LightGBM and XGBoost are not part of the current project dependencies, so the implemented advanced workflow uses sklearn-only candidates. The code is ready to compare additional candidates if those dependencies are added later.",
+        "- Baseline 1: Logistic Regression",
+        "- Baseline 2: Decision Tree",
+        "- Baseline 3: Random Forest",
+        "- Advanced 1: LightGBM Classifier",
+        "- Advanced 2: XGBoost Classifier",
         "",
     ]
     return "\n".join(lines)
+
+
+def generate_threshold_report(threshold_metrics: pd.DataFrame) -> str:
+    """Create a full threshold tuning report for all five requested models."""
+    report_table = threshold_metrics.copy()
+    report_table["Model"] = report_table["model"].map(DISPLAY_NAMES)
+    report_table = report_table.rename(
+        columns={
+            "threshold": "Threshold",
+            "precision_class_1": "Precision Class 1",
+            "recall_class_1": "Recall Class 1",
+            "f1_class_1": "F1 Class 1",
+            "pr_auc": "PR-AUC",
+            "roc_auc": "ROC-AUC",
+            "false_positives": "False Positives",
+            "false_negatives": "False Negatives",
+            "true_positives": "True Positives",
+        }
+    )
+    report_table = report_table[
+        [
+            "Model",
+            "Threshold",
+            "Precision Class 1",
+            "Recall Class 1",
+            "F1 Class 1",
+            "PR-AUC",
+            "ROC-AUC",
+            "False Positives",
+            "False Negatives",
+            "True Positives",
+        ]
+    ]
+
+    return "\n".join(
+        [
+            "# Day 5 Threshold Tuning Report",
+            "",
+            "Thresholds are evaluated from 0.05 to 0.95 for the SLA breach class across the requested five-model lineup.",
+            "",
+            dataframe_to_markdown(report_table),
+            "",
+        ]
+    )
 
 
 def generate_model_selection_notes(
@@ -305,6 +428,11 @@ def run_training(
     final_model_path: str | Path = FINAL_MODEL_PATH,
 ) -> pd.DataFrame:
     """Train baseline and advanced models, select final model, and save reports."""
+    warnings.filterwarnings(
+        "ignore",
+        message="X does not have valid feature names",
+        category=UserWarning,
+    )
     df = load_feature_dataset(input_path)
     X, y = separate_optimized_features_and_target(df)
     X_train, X_test, y_train, y_test = split_train_test(X, y)
@@ -313,9 +441,7 @@ def run_training(
         X_train[APPROVED_MODEL_FEATURES],
         y_train,
     )
-    advanced_models = build_advanced_candidates(X_train)
-    for model in advanced_models.values():
-        model.fit(X_train, y_train)
+    advanced_models = train_advanced_models(X_train, y_train)
 
     all_models = {**baseline_models, **advanced_models}
     eval_inputs = {
@@ -361,6 +487,19 @@ def run_training(
             final_row,
         ),
         ADVANCED_REPORT_PATH,
+    )
+    save_text(
+        generate_advanced_model_report(
+            metrics,
+            selected_thresholds,
+            final_model_name,
+            final_row,
+        ),
+        DAY5_OPTIMIZATION_REPORT_PATH,
+    )
+    save_text(
+        generate_threshold_report(threshold_metrics),
+        DAY5_THRESHOLD_REPORT_PATH,
     )
     save_text(
         generate_model_selection_notes(metrics, final_model_name, final_row),

@@ -102,13 +102,10 @@ Baseline models:
 - Decision Tree
 - Random Forest
 
-Advanced sklearn models:
+Advanced models:
 
-- Optimized Logistic Regression
-- Tuned Random Forest
-- HistGradientBoosting
-
-LightGBM and XGBoost were listed as candidate advanced models, but they are not included in the current dependency set. The implemented advanced workflow uses sklearn-only models for reproducibility.
+- LightGBM Classifier
+- XGBoost Classifier
 
 ## Evaluation Metrics
 
@@ -125,18 +122,18 @@ Accuracy is reported but is not used as the primary selection criterion.
 
 ## Final Model Selected
 
-The final selected model is `Logistic Regression` with a tuned operating threshold of `0.25`.
+The final selected model is `LightGBM Classifier` with a tuned operating threshold of `0.25`.
 
 On the held-out test set at the selected threshold:
 
 | Metric | Value |
 | --- | ---: |
-| Recall class 1 | 0.8914 |
-| Precision class 1 | 0.1005 |
-| F1 class 1 | 0.1806 |
-| PR-AUC | 0.1825 |
-| False negatives | 170 |
-| False positives | 12,488 |
+| Recall class 1 | 0.9137 |
+| Precision class 1 | 0.1000 |
+| F1 class 1 | 0.1803 |
+| PR-AUC | 0.2042 |
+| False negatives | 135 |
+| False positives | 12,865 |
 
 The model was selected because the project prioritizes catching SLA breaches early, even if that creates additional false alerts for operations review.
 

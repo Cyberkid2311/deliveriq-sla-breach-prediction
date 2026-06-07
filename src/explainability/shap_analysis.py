@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
+import warnings
 
 import pandas as pd
+
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "1")
 
 try:
     from src.models.predict import (
@@ -163,6 +167,11 @@ def run_explainability(
     feature_path: str | Path = DEFAULT_FEATURE_PATH,
 ) -> pd.DataFrame:
     """Run final-model explainability and save outputs."""
+    warnings.filterwarnings(
+        "ignore",
+        message="X does not have valid feature names",
+        category=UserWarning,
+    )
     model = load_model(model_path)
     feature_dataset = pd.read_csv(resolve_project_path(feature_path))
 

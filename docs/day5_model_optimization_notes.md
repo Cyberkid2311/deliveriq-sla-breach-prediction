@@ -2,78 +2,52 @@
 
 ## Summary
 
-The Day 5 optimization workflow is implemented. It adds model-safe delivery estimate, route, and order intensity features, trains sklearn-only optimized candidates, and evaluates operating thresholds from 0.05 to 0.95.
+The Day 5 advanced modeling workflow now implements the requested five-model lineup:
 
-The strongest recall-first operational candidate is `Optimized Logistic Regression` at threshold `0.20`.
+- Logistic Regression
+- Decision Tree
+- Random Forest
+- LightGBM Classifier
+- XGBoost Classifier
 
-## Dataset and feature updates
+All models are evaluated on the same stratified train/test split and selected using the project priority order: recall for the SLA breach class, then precision, F1-score, PR-AUC, and ROC-AUC.
 
-- Final dataset shape after Day 5 feature generation: 96,470 rows, 42 columns.
-- New model-safe feature groups:
-  - delivery estimate bucket: `estimated_delivery_days_bucket`
-  - route pair features: `seller_customer_state_pair`, `seller_customer_city_pair`
-  - order intensity buckets: `item_count_bucket`, `product_count_bucket`, `seller_count_bucket`, `price_bucket`, `freight_per_item_bucket`
-- The new features are created before delivery and do not use actual delivery dates, delay fields, order status after fulfillment, reviews, or IDs.
-- The approved feature list is updated in `docs/feature_list_v1.md`.
+## Advanced Model Implementation
 
-## Optimized model candidates
+LightGBM and XGBoost are implemented as pipeline-based models with the same approved pre-delivery feature set. Both use class imbalance handling through model-specific weighting.
 
-The Day 5 sklearn-only candidates are:
+The final selected model is `LightGBM Classifier` at threshold `0.25`.
 
-- `Optimized Logistic Regression`
-- `Optimized Random Forest`
-- `HistGradientBoosting`
+## Model Comparison
 
-Artifacts saved:
+| Model | Accuracy | Precision Class 1 | Recall Class 1 | F1 Class 1 | ROC-AUC | PR-AUC |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Logistic Regression | 0.6823 | 0.1477 | 0.6115 | 0.2379 | 0.7045 | 0.1825 |
+| Decision Tree | 0.6532 | 0.1297 | 0.5738 | 0.2116 | 0.6690 | 0.1657 |
+| Random Forest | 0.6039 | 0.1242 | 0.6415 | 0.2081 | 0.6664 | 0.1630 |
+| LightGBM Classifier | 0.7259 | 0.1619 | 0.5700 | 0.2522 | 0.7145 | 0.2042 |
+| XGBoost Classifier | 0.7458 | 0.1667 | 0.5335 | 0.2540 | 0.7131 | 0.2064 |
 
-- `models/day5_optimized_logistic_regression.pkl`
-- `models/day5_optimized_random_forest.pkl`
-- `models/day5_hist_gradient_boosting.pkl`
-- `models/day5_optimized_best_model.pkl`
+## Recall-First Threshold Results
 
-Reports saved:
+| Model | Threshold | Recall | Precision | F1 | False Positives | False Negatives |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Logistic Regression | 0.25 | 0.8914 | 0.1005 | 0.1806 | 12,488 | 170 |
+| Decision Tree | 0.30 | 0.8428 | 0.1015 | 0.1811 | 11,679 | 246 |
+| Random Forest | 0.45 | 0.8371 | 0.1012 | 0.1806 | 11,632 | 255 |
+| LightGBM Classifier | 0.25 | 0.9137 | 0.1000 | 0.1803 | 12,865 | 135 |
+| XGBoost Classifier | 0.25 | 0.8971 | 0.1016 | 0.1826 | 12,412 | 161 |
 
-- `reports/day5_model_optimization_report.md`
-- `reports/day5_threshold_tuning_report.md`
+## Business Interpretation
 
-## Default threshold comparison
+LightGBM is selected because it catches the most SLA breaches under the recall-first threshold strategy. It reduces false negatives from the Day 4 best baseline Random Forest count of 561 to 135.
 
-At the default threshold, `HistGradientBoosting` has the best PR-AUC but almost no class-1 recall:
+The tradeoff is a high false-positive count, so the threshold should be reviewed against operations capacity before production use.
 
-| Model | Recall | Precision | F1 | PR-AUC | ROC-AUC |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Optimized Logistic Regression | 0.5457 | 0.1676 | 0.2564 | 0.1899 | 0.7084 |
-| Optimized Random Forest | 0.6460 | 0.1339 | 0.2219 | 0.1640 | 0.6786 |
-| HistGradientBoosting | 0.0019 | 0.6000 | 0.0038 | 0.2078 | 0.7200 |
+## Deliverables
 
-## Selected recall-first thresholds
-
-The threshold selector uses recall first after basic precision and false-positive guardrails.
-
-| Model | Threshold | Recall | Precision | F1 | PR-AUC | False Positives | False Negatives | True Positives |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Optimized Logistic Regression | 0.20 | 0.8843 | 0.1020 | 0.1829 | 0.1899 | 12,188 | 181 | 1,384 |
-| Optimized Random Forest | 0.50 | 0.6460 | 0.1339 | 0.2219 | 0.1640 | 6,537 | 554 | 1,011 |
-| HistGradientBoosting | 0.05 | 0.8754 | 0.1088 | 0.1935 | 0.2078 | 11,224 | 195 | 1,370 |
-
-## Business interpretation
-
-- Day 4 best baseline Random Forest caught 1,004 breaches and missed 561.
-- Day 5 `Optimized Logistic Regression` at threshold `0.20` catches 1,384 breaches and misses 181.
-- This reduces false negatives by 380 compared with the Day 4 best baseline.
-- The tradeoff is a high false-positive count: 12,188 orders are flagged but are not actual breaches.
-- `HistGradientBoosting` is worth keeping as a candidate because it has the strongest PR-AUC, but its default threshold is not operationally useful for recall.
-
-## Recommendation
-
-Use `Optimized Logistic Regression` at threshold `0.20` as the Day 5 recall-first recommendation if operations can tolerate a high alert volume.
-
-If false positives are too costly, use the threshold tuning report to pick a higher threshold or run a Day 6 precision-floor tuning pass.
-
-## Remaining work for Day 6
-
-1. Choose an operational false-positive tolerance with the business team.
-2. Add precision-floor threshold tuning, for example maximize recall subject to precision >= 0.12 or 0.15.
-3. Add probability calibration so threshold values are easier to interpret.
-4. Compare recall-first, F1-first, and precision-floor operating policies side by side.
-5. Consider external model/encoding experiments only if dependency changes are allowed.
+- `src/models/train_model.py`
+- `src/models/model_selection.py`
+- `models/final_model.pkl`
+- `reports/advanced_model_report.md`
+- `docs/day5_model_selection_notes.md`

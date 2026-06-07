@@ -5,3 +5,5 @@ ipykernel
 matplotlib
 scikit-learn
 streamlit
+lightgbm
+xgboost
