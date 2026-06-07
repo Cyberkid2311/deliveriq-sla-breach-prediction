@@ -218,10 +218,10 @@ The final risk scoring workflow generated predictions for 96,470 orders:
 
 | Risk Bucket | Orders |
 | --- | ---: |
-| Low | 34,891 |
-| Medium | 41,184 |
-| High | 16,412 |
-| Critical | 3,983 |
+| Low | 33,419 |
+| Medium | 47,760 |
+| High | 13,908 |
+| Critical | 1,383 |
 
 The dashboard and prediction CSV make model output usable for business review, not just technical evaluation.
 
@@ -232,6 +232,14 @@ The dashboard and prediction CSV make model output usable for business review, n
 - Threshold tuning materially changes operational usefulness.
 - Geographic and route-related signals are important drivers of delivery risk.
 - A deployable ML project needs risk scoring, explanation, and dashboard output, not just a trained model.
+
+## Limitations
+
+- The final model is recall-focused and creates many false positives.
+- Probability thresholds were selected using a single holdout split, not cross-validation.
+- SHAP is optional and was not included as a required dependency.
+- The current dashboard is a local Streamlit app, not a deployed production service.
+- Business users should validate alert volume and intervention capacity before production use.
 
 ## Future Improvements
 

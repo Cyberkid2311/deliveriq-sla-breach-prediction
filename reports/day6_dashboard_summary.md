@@ -15,10 +15,10 @@ The final model now generates order-level SLA breach risk scores and business ri
 
 | Risk Bucket | Orders |
 | --- | ---: |
-| Low | 34,891 |
-| Medium | 41,184 |
-| High | 16,412 |
-| Critical | 3,983 |
+| Low | 33,419 |
+| Medium | 47,760 |
+| High | 13,908 |
+| Critical | 1,383 |
 
 ## Business Explanation
 
@@ -33,31 +33,31 @@ Top customer states by average predicted risk:
 
 | Customer State | Average Risk |
 | --- | ---: |
-| AL | 0.6748 |
-| MA | 0.5909 |
-| SE | 0.5829 |
-| RR | 0.5806 |
-| CE | 0.5685 |
+| AL | 0.6172 |
+| BA | 0.5364 |
+| RJ | 0.5333 |
+| CE | 0.5289 |
+| MA | 0.5275 |
 
 Top seller states by average predicted risk:
 
 | Seller State | Average Risk |
 | --- | ---: |
-| MA | 0.6827 |
-| AM | 0.6679 |
-| RN | 0.4433 |
-| CE | 0.4281 |
-| RJ | 0.4271 |
+| MA | 0.5354 |
+| SP | 0.4172 |
+| RJ | 0.3983 |
+| PI | 0.3817 |
+| AM | 0.3739 |
 
 Top product categories by average predicted risk:
 
 | Product Category | Average Risk |
 | --- | ---: |
-| fashion_esporte | 0.5329 |
-| casa_conforto_2 | 0.5321 |
-| moveis_colchao_e_estofado | 0.5292 |
-| fashion_underwear_e_moda_praia | 0.4952 |
-| alimentos | 0.4939 |
+| pc_gamer | 0.5776 |
+| portateis_cozinha_e_preparadores_de_alimentos | 0.5066 |
+| casa_conforto_2 | 0.4970 |
+| artes_e_artesanato | 0.4941 |
+| moveis_colchao_e_estofado | 0.4739 |
 
 ## Dashboard Usage
 

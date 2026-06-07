@@ -86,10 +86,10 @@ Risk bucket distribution:
 
 | Risk Bucket | Orders |
 | --- | ---: |
-| Low | 34,891 |
-| Medium | 41,184 |
-| High | 16,412 |
-| Critical | 3,983 |
+| Low | 33,419 |
+| Medium | 47,760 |
+| High | 13,908 |
+| Critical | 1,383 |
 
 ## Dashboard
 
