@@ -4,3 +4,4 @@ pandas
 ipykernel
 matplotlib
 scikit-learn
+streamlit

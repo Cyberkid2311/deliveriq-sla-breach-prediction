@@ -65,6 +65,7 @@ FINAL_FEATURE_COLUMNS = [
     "purchase_hour",
     "is_weekend_order",
     "estimated_delivery_days",
+    "estimated_delivery_days_bucket",
     "customer_state",
     "customer_city",
     "seller_state",
@@ -72,6 +73,8 @@ FINAL_FEATURE_COLUMNS = [
     "seller_customer_same_state",
     "seller_customer_same_city",
     "seller_customer_same_zip_prefix",
+    "seller_customer_state_pair",
+    "seller_customer_city_pair",
     "product_category_name",
     "product_weight_g",
     "product_weight_kg",
@@ -90,10 +93,15 @@ FINAL_FEATURE_COLUMNS = [
     "avg_price",
     "item_count",
     "product_count",
+    "product_count_bucket",
     "seller_count",
+    "seller_count_bucket",
     "product_category_count",
+    "item_count_bucket",
     "price_per_item",
     "freight_per_item",
+    "price_bucket",
+    "freight_per_item_bucket",
     "sla_breached",
 ]
 
@@ -164,6 +172,11 @@ def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["estimated_delivery_days"] = (
         df["order_estimated_delivery_date"] - df["order_purchase_timestamp"]
     ).dt.total_seconds() / (60 * 60 * 24)
+    df["estimated_delivery_days_bucket"] = pd.cut(
+        df["estimated_delivery_days"],
+        bins=[-float("inf"), 5, 10, 15, 25, float("inf")],
+        labels=["0-5", "5-10", "10-15", "15-25", "25+"],
+    ).astype("string")
     return df
 
 
@@ -241,6 +254,8 @@ def create_location_features(df: pd.DataFrame) -> pd.DataFrame:
     df["seller_customer_same_city"] = (
         df["seller_city"] == df["customer_city"]
     ).astype("int64")
+    df["seller_customer_state_pair"] = df["seller_state"] + "_to_" + df["customer_state"]
+    df["seller_customer_city_pair"] = df["seller_city"] + "_to_" + df["customer_city"]
     return df
 
 
@@ -275,6 +290,36 @@ def create_commercial_intensity_features(df: pd.DataFrame) -> pd.DataFrame:
 
     df.loc[df["item_count"] == 0, "price_per_item"] = 0
     df.loc[df["item_count"] == 0, "freight_per_item"] = 0
+    df["item_count_bucket"] = pd.cut(
+        df["item_count"],
+        bins=[-0.01, 1, 2, 5, float("inf")],
+        labels=["1_item", "2_items", "3-5_items", "6+_items"],
+        include_lowest=True,
+    ).astype("string")
+    df["product_count_bucket"] = pd.cut(
+        df["product_count"],
+        bins=[-0.01, 1, 2, 5, float("inf")],
+        labels=["1_product", "2_products", "3-5_products", "6+_products"],
+        include_lowest=True,
+    ).astype("string")
+    df["seller_count_bucket"] = pd.cut(
+        df["seller_count"],
+        bins=[-0.01, 1, 2, 3, float("inf")],
+        labels=["1_seller", "2_sellers", "3_sellers", "4+_sellers"],
+        include_lowest=True,
+    ).astype("string")
+    df["price_bucket"] = pd.cut(
+        df["price"],
+        bins=[-0.01, 50, 100, 200, 500, float("inf")],
+        labels=["0-50", "50-100", "100-200", "200-500", "500+"],
+        include_lowest=True,
+    ).astype("string")
+    df["freight_per_item_bucket"] = pd.cut(
+        df["freight_per_item"],
+        bins=[-0.01, 10, 20, 40, 80, float("inf")],
+        labels=["0-10", "10-20", "20-40", "40-80", "80+"],
+        include_lowest=True,
+    ).astype("string")
 
     return df
 

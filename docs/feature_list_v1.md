@@ -16,6 +16,7 @@ These fields are allowed as model inputs because they are known before actual cu
 - `purchase_hour`
 - `is_weekend_order`
 - `estimated_delivery_days`
+- `estimated_delivery_days_bucket`
 
 ### Location-Based Features
 
@@ -25,6 +26,8 @@ These fields are allowed as model inputs because they are known before actual cu
 - `seller_city`
 - `seller_customer_same_state`
 - `seller_customer_same_city`
+- `seller_customer_state_pair`
+- `seller_customer_city_pair`
 
 ### Product-Based Features
 
@@ -40,7 +43,9 @@ These fields are allowed as model inputs because they are known before actual cu
 - `total_product_volume_cm3`
 - `product_weight_bucket`
 - `product_count`
+- `product_count_bucket`
 - `seller_count`
+- `seller_count_bucket`
 - `product_category_count`
 
 ### Commercial And Logistics Features
@@ -51,8 +56,11 @@ These fields are allowed as model inputs because they are known before actual cu
 - `price`
 - `avg_price`
 - `item_count`
+- `item_count_bucket`
 - `price_per_item`
 - `freight_per_item`
+- `price_bucket`
+- `freight_per_item_bucket`
 - `seller_customer_same_zip_prefix`
 
 ## Target Column
@@ -91,6 +99,8 @@ These fields can be used for analysis and target validation, but they should not
 ## Feature Engineering Notes
 
 - `seller_state` and `seller_city` come from the primary seller fields in the order-level dataset.
+- Day 5 route features combine seller and customer locations into pre-delivery state/city pair signals.
+- Day 5 bucket features discretize estimated delivery days, order counts, price, and per-item freight to capture nonlinear risk patterns.
 - `product_category_name` comes from the primary product category.
 - Product weight and dimensions use average product attributes at the order level.
 - Total product weight and total product volume are retained to represent shipment-level size.
