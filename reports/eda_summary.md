@@ -82,8 +82,8 @@ Most orders in the dataset were successfully delivered. Only a small portion of 
 
 The dataset already contained a precomputed `sla_breached` column:
 
-* `0` → Delivered within SLA
-* `1` → Delivered after promised date
+* `0`: Delivered within SLA
+* `1`: Delivered after promised date
 
 ## Overall SLA Breach Rate
 

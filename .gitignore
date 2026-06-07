@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ipynb_checkpoints/
+.streamlit/
+streamlit.out.log
+streamlit.err.log
+.venv/
+venv/
+env/
